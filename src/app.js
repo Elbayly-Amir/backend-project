@@ -3,6 +3,9 @@ const cors = require('cors');
 const connectDB = require('./config/database');
 const doctorRoutes = require('./api/routes/doctorRoutes');
 const patientRoutes = require('./api/routes/patientRoutes');
+const reviewRoutes = require('./api/routes/reviewRoutes');
+
+
 connectDB();
 
 const app = express();
@@ -19,6 +22,8 @@ app.get('/', (req, res) => {
 
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/patients', patientRoutes);
+app.use('/api/reviews', reviewRoutes);
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
