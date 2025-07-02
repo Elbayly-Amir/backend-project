@@ -3,13 +3,17 @@ const router = express.Router();
 const doctorController = require('../controllers/doctorController');
 const patientController = require('../controllers/patientController');
 const reviewController = require('../controllers/reviewController');
+const {protect} = require('../../middlewares/authMiddleware');
 
-router.post('/', doctorController.createDoctor);
+
+// Public routes
 router.get('/', doctorController.getAllDoctors);
 router.get('/:id', doctorController.getDoctorProfile);
-router.patch('/:id', doctorController.updateDoctor);
+// Protect routes that require authentication
+router.post('/', protect, doctorController.createDoctor);
+router.patch('/:id', protect, doctorController.updateDoctor);
 router.delete('/:id', doctorController.deleteDoctor);
-router.get('/:doctorId/patients', patientController.getPatientsByDoctor);
-router.get('/:doctorId/reviews', reviewController.getReviewsByDoctor);
+router.get('/:doctorId/patients', protect, patientController.getPatientsByDoctor);
+router.get('/:doctorId/reviews', protect, reviewController.getReviewsByDoctor);
 
 module.exports = router;
