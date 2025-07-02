@@ -66,7 +66,7 @@ const deleteDoctor = async (req, res) => {
     try {
         const doctorId = req.params.id;
         const deletedDoctor = await doctorService.deleteDoctorProfile(doctorId);
-        res.status(200).json({
+        res.status(204).json({
             status: 'success',
             data: deletedDoctor
         });
