@@ -20,6 +20,28 @@ const doctorSchema = new mongoose.Schema({
         required: [true, 'Specialty is required'],
         trim: true,
     },
+    location:{
+        officeName: String,
+        addresse: String,
+        city: String,
+        zipCode: String,
+    },
+    experiences: [{
+        position: String,
+        hospital: String,
+        startDate: Date,
+        endDate: Date,
+        description: String
+    }],
+    education: [{
+        degree: String,
+        university: String,
+        year: Number,
+    }],
+    doctorsConnection: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Doctor'
+    }],
     
 }, {
     timestamps: true,

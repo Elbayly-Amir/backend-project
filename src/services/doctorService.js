@@ -1,4 +1,6 @@
 const Doctor = require('../models/Doctor');
+const Patient = require('../models/Patient');
+const Review = require('../models/Review');
 
 const createDoctorProfile  = async (doctorData) => {
     try {
@@ -19,15 +21,23 @@ const findAllDoctors = async () => {
 };
 
 const getDoctorProfile = async (doctorId) => {
-    try {
-        const doctor = await Doctor.findById(doctorId);
-        if (!doctor) {
-            throw new Error('Doctor not found');
-        }
-        return doctor;
-    } catch (error) {
-        throw new Error(error.message);
-    }
+
+   const doctor = await Doctor.findById(doctorId)
+    .populate('doctorsConnection', 'firstName lastName specialty');
+
+  if (!doctor) {
+    throw new Error('Doctor not found');
+  }
+
+  const patients = await Patient.find({ doctor: doctorId });
+  const reviews = await Review.find({ doctor: doctorId })
+    .populate('patient', 'firstName lastName');
+
+  const fullProfile = doctor.toObject(); 
+  fullProfile.patients = patients;
+  fullProfile.reviews = reviews;
+
+  return fullProfile;
 };
 
 const updateDoctorProfile = async (doctorId, updateData) => {
