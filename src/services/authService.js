@@ -2,6 +2,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+
 // We generate a jwt token for the user
 const generrateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -36,7 +37,22 @@ const registerUser = async (userData) => {
     }
 };
 
+const loginUser = async (email, password) => {
+    const user = await User.findOne({ email });
+    if (user && (await user.matchPassword(password))) {
+
+        return {
+            _id: user._id,
+            email: user.email,
+            role: user.role,
+            token: generrateToken(user._id),
+        };
+    } else {
+        throw new Error('Invalid email or password');
+    }
+};
+
 module.exports = {
-    generrateToken,
     registerUser,
+    loginUser,
 };
