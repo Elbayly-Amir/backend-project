@@ -6,7 +6,7 @@ const Patient = require('../src/models/Patient');
 const Review = require('../src/models/Review');
 require('dotenv').config();
 
-describe('API des Avis', () => {
+describe('API for Reviews', () => {
 
   let doctorOne, doctorTwo, testPatient;
 
@@ -28,10 +28,9 @@ describe('API des Avis', () => {
     await mongoose.connection.close();
   });
 
-  // --- Tests POST /api/reviews ---
+  // Test for POST /api/reviews
   describe('POST /api/reviews', () => {
-    // ... votre test de création d'avis est ici ...
-     it('devrait créer un nouvel avis', async () => {
+     it('should create a new notice', async () => {
         const newReviewData = { rating: 5, comment: 'Excellent.', doctor: doctorOne._id, patient: testPatient._id };
         const response = await request(app).post('/api/reviews').send(newReviewData);
 
@@ -40,19 +39,16 @@ describe('API des Avis', () => {
     });
   });
 
-  // --- NOUVEAU BLOC DE TEST ---
-  // Test de GET /api/doctors/:doctorId/reviews
+ 
+  // Test to get all reviews of a specific doctor
   describe('GET /api/doctors/:doctorId/reviews', () => {
-    it('devrait renvoyer uniquement les avis du docteur spécifié', async () => {
-      // 1. Préparation : on crée des avis pour les deux docteurs
-      await Review.create({ rating: 5, comment: 'Avis 1 pour Dr Un', doctor: doctorOne._id, patient: testPatient._id });
-      await Review.create({ rating: 4, comment: 'Avis 2 pour Dr Un', doctor: doctorOne._id, patient: testPatient._id });
-      await Review.create({ rating: 3, comment: 'Avis pour Dr Deux', doctor: doctorTwo._id, patient: testPatient._id });
+    it('should return only the advice of the specified doctor', async () => {
+      await Review.create({ rating: 5, comment: 'Review 1 for Dr One', doctor: doctorOne._id, patient: testPatient._id });
+      await Review.create({ rating: 4, comment: 'Review 2 for Dr One', doctor: doctorOne._id, patient: testPatient._id });
+      await Review.create({ rating: 3, comment: 'Review fot Dr Deux', doctor: doctorTwo._id, patient: testPatient._id });
 
-      // 2. Action
       const response = await request(app).get(`/api/doctors/${doctorOne._id}/reviews`);
 
-      // 3. Assertions
       expect(response.statusCode).toBe(200);
       expect(response.body.data.length).toBe(2);
       expect(response.body.data[0].comment).toContain('Dr Un');

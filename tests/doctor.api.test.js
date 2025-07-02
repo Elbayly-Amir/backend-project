@@ -6,13 +6,13 @@ const Patient = require('../src/models/Patient');
 const Review = require('../src/models/Review');
 require('dotenv').config();
 
-describe('API /api/doctors', () => {
+describe('API for Doctors', () => {
 
   beforeAll(async () => {
     await mongoose.connect(process.env.TEST_DATABASE_URL);
   });
 
-  // La fonction beforeEach est très utile car elle nous assure une base de données propre avant chaque test.
+  // The beforeEach hook is used to clear the database before each test
   beforeEach(async () => {
     await Doctor.deleteMany({});
      await Patient.deleteMany({});
@@ -23,7 +23,7 @@ describe('API /api/doctors', () => {
     await mongoose.connection.close();
   });
 
-  // --- Test du endpoint POST / ---
+  // Test for POST /api/doctors
   describe('POST /', () => {
     it('devrait créer un nouveau profil de docteur et renvoyer un statut 201', async () => {
       const newDoctorData = { firstName: 'Marie', lastName: 'Curie', specialty: 'Radiologie' };
@@ -34,54 +34,50 @@ describe('API /api/doctors', () => {
       expect(response.body.data._id).toBeDefined();
     });
 
-    it('devrait renvoyer un statut 400 si un champ requis est manquant', async () => {
+    it('should return a status of 400 if a required field is missing', async () => {
       const invalidDoctorData = { firstName: 'Marie', specialty: 'Radiologie' };
       const response = await request(app).post('/api/doctors').send(invalidDoctorData);
       expect(response.statusCode).toBe(400);
     });
   });
 
-  // --- Test du endpoint GET / ---
+  // Test for GET /api/doctors
   describe('GET /', () => {
-    it('devrait renvoyer une liste de tous les docteurs', async () => {
-      // 1. Préparation : on insère un docteur dans la BDD de test
+    it('should return a list of all doctors', async () => {
+      // A doctor is inserted into the test DB
       await Doctor.create({ firstName: 'Louis', lastName: 'Pasteur', specialty: 'Microbiologie' });
-
-      // 2. Action
       const response = await request(app).get('/api/doctors');
 
-      // 3. Assertions
+      // The response is checked to ensure it has a status code of 200
       expect(response.statusCode).toBe(200);
-      expect(Array.isArray(response.body.data)).toBe(true); // On vérifie que .data est bien un tableau
-      expect(response.body.data.length).toBe(1); // On vérifie la longueur du tableau dans .data
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBe(1);
       expect(response.body.data[0].firstName).toBe('Louis');
     });
   });
 
-  // --- Test du endpoint GET /:id ---
+  // Test for GET /:id
+  // This endpoint retrieves a single doctor by ID
   describe('GET /:id', () => {
-    it('devrait renvoyer un seul docteur si l\'ID est valide', async () => {
-      // 1. Préparation
+    it('should return a single doctor if the ID is valid', async () => {
       const doctor = await Doctor.create({ firstName: 'Alexander', lastName: 'Fleming', specialty: 'Bactériologie' });
-
-      // 2. Action
       const response = await request(app).get(`/api/doctors/${doctor._id}`);
 
-      // 3. Assertions
       expect(response.statusCode).toBe(200);
       expect(response.body.lastName).toBe('Fleming');
     });
 
-    it('devrait renvoyer un statut 404 si l\'ID n\'existe pas', async () => {
-      const nonExistentId = new mongoose.Types.ObjectId(); // Crée un ID MongoDB valide mais qui n'existe pas
+    it('should return a 404 status if the ID does not exist', async () => {
+      const nonExistentId = new mongoose.Types.ObjectId();
       const response = await request(app).get(`/api/doctors/${nonExistentId}`);
       expect(response.statusCode).toBe(404);
     });
   });
 
-  // --- Test du endpoint PATCH /:id ---
+  // Test for PATCH /:id
+  // This endpoint updates a doctor's profile
   describe('PATCH /:id', () => {
-    it('devrait mettre à jour un docteur, y compris les champs complexes', async () => {
+    it('should update a doctor, including complex fields', async () => {
       const doctor = await Doctor.create({ firstName: 'Rosalind', lastName: 'Franklin', specialty: 'Biophysique' });
       const updates = {
         location: { city: 'Londres' },
@@ -97,55 +93,39 @@ describe('API /api/doctors', () => {
     });
   });
 
-  describe('GET /:id (Profil Complet)', () => {
-    it('devrait renvoyer le profil complet du docteur avec ses patients, avis et connexions', async () => {
+  // Test for GET /:id (Complete Profile)
+  // This endpoint retrieves a complete profile of a doctor, including patients, reviews, and connections
+  describe('GET /:id (Complete Profile)', () => {
+    it('should return the doctor complete profile with patients, reviews and connections', async () => {
       // 1. PRÉPARATION : C'est l'étape la plus importante. On crée un écosystème de données.
       const doctorPrincipal = await Doctor.create({ firstName: 'Marie', lastName: 'Curie', specialty: 'Physique' });
       const doctorConnecte = await Doctor.create({ firstName: 'Pierre', lastName: 'Curie', specialty: 'Physique' });
       
-      // On lie le docteur connecté au docteur principal
       doctorPrincipal.doctorsConnection.push(doctorConnecte._id);
       await doctorPrincipal.save();
 
       const patient = await Patient.create({ firstName: 'Irène', lastName: 'Joliot-Curie', doctor: doctorPrincipal._id });
       await Review.create({ rating: 5, comment: 'Travail révolutionnaire sur la radioactivité.', doctor: doctorPrincipal._id, patient: patient._id });
 
-      // 2. ACTION : On appelle l'endpoint
       const response = await request(app).get(`/api/doctors/${doctorPrincipal._id}`);
       
-      // 3. ASSERTIONS : On vérifie que toutes les pièces du puzzle sont là
       expect(response.statusCode).toBe(200);
-
-      // Vérifier le docteur lui-même
       expect(response.body.lastName).toBe('Curie');
-
-      // Vérifier la connexion peuplée
       expect(response.body.doctorsConnection.length).toBe(1);
       expect(response.body.doctorsConnection[0].lastName).toBe('Curie');
-
-      // Vérifier les patients
       expect(response.body.patients.length).toBe(1);
       expect(response.body.patients[0].firstName).toBe('Irène');
-      
-      // Vérifier les avis
       expect(response.body.reviews.length).toBe(1);
       expect(response.body.reviews[0].rating).toBe(5);
     });
   });
 
-  // --- Test du endpoint DELETE /:id ---
+  // Test for DELETE /:id
   describe('DELETE /:id', () => {
     it('devrait supprimer un docteur et renvoyer un statut 204', async () => {
-      // 1. Préparation
       const doctor = await Doctor.create({ firstName: 'Isaac', lastName: 'Newton', specialty: 'Physique' });
-
-      // 2. Action
       const response = await request(app).delete(`/api/doctors/${doctor._id}`);
-
-      // 3. Assertions
       expect(response.statusCode).toBe(204);
-
-      // On vérifie en plus que le docteur n'est plus dans la base de données
       const doctorInDb = await Doctor.findById(doctor._id);
       expect(doctorInDb).toBeNull();
     });
