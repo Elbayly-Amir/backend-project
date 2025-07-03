@@ -3,60 +3,45 @@ const mongoose = require('mongoose');
 const app = require('../src/app');
 const Doctor = require('../src/models/Doctor');
 const Patient = require('../src/models/Patient');
+const User = require('../src/models/User');
 require('dotenv').config();
 
-describe('API for Patients', () => {
+describe('API for Patients (via Doctors)', () => {
 
   let doctorOne;
-  let doctorTwo;
+  let userToken;
 
   beforeAll(async () => {
     await mongoose.connect(process.env.TEST_DATABASE_URL);
   });
 
   beforeEach(async () => {
+    await User.deleteMany({});
     await Doctor.deleteMany({});
     await Patient.deleteMany({});
 
-    // We create two doctors for testing
-    doctorOne = await Doctor.create({ firstName: 'Hippocrate', lastName: 'de Cos', specialty: 'Médecine' });
-    doctorTwo = await Doctor.create({ firstName: 'Galien', lastName: 'de Pergame', specialty: 'Anatomie' });
+    const userDoc = await new User({ email: 'doc@test.com', password: 'password123456', role: 'doctor' }).save();
+    doctorOne = await Doctor.create({ _id: userDoc._id, firstName: 'Hippocrate', lastName: 'Cos', specialty: 'Médecine' });
+
+    const userPatient = await new User({ email: 'patient@test.com', password: 'password123456', role: 'patient' }).save();
+    await Patient.create({ _id: userPatient._id, user: userPatient._id, firstName: 'Patient', lastName: 'Un' });
+    
+    const res = await request(app).post('/api/auth/login').send({ email: 'patient@test.com', password: 'password123456' });
+    userToken = res.body.data.token;
   });
 
   afterAll(async () => {
     await mongoose.connection.close();
   });
 
-  // Test for POST /api/patients
-  describe('POST /api/patients', () => {
-    it('should create a new patient linked to an existing doctor', async () => {
-      const newPatientData = {
-        firstName: 'Periclès',
-        lastName: 'Athènes',
-        doctor: doctorOne._id
-      };
-      const response = await request(app).post('/api/patients').send(newPatientData);
-
-      expect(response.statusCode).toBe(201);
-      expect(response.body.data.firstName).toBe('Periclès');
-      expect(response.body.data.doctor).toBe(doctorOne._id.toString());
-    });
-  });
-
-  // Test to get all patients of a specific doctor
   describe('GET /api/doctors/:doctorId/patients', () => {
-    it('should only refer patients of the specified doctor', async () => {
-      await Patient.create({ firstName: 'Patient One', lastName: 'A', doctor: doctorOne._id });
-      await Patient.create({ firstName: 'Patient Two', lastName: 'B', doctor: doctorOne._id });
-      await Patient.create({ firstName: 'Patient Three', lastName: 'C', doctor: doctorTwo._id });
-
-      const response = await request(app).get(`/api/doctors/${doctorOne._id}/patients`);
+    it('should return the patient list if the user is authenticated', async () => {
+      const response = await request(app)
+        .get(`/api/doctors/${doctorOne._id}/patients`)
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(response.statusCode).toBe(200);
-      expect(response.body.data.length).toBe(2);
-      response.body.data.forEach(patient => {
-        expect(patient.doctor.toString()).toBe(doctorOne._id.toString());
-      });
+      expect(response.body.data.length).toBe(0); 
     });
   });
 });

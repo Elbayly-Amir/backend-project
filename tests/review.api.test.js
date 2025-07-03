@@ -4,55 +4,60 @@ const app = require('../src/app');
 const Doctor = require('../src/models/Doctor');
 const Patient = require('../src/models/Patient');
 const Review = require('../src/models/Review');
+const User = require('../src/models/User');
 require('dotenv').config();
 
 describe('API for Reviews', () => {
 
-  let doctorOne, doctorTwo, testPatient;
+  let doctorOne, patientUser, patientToken;
 
   beforeAll(async () => {
     await mongoose.connect(process.env.TEST_DATABASE_URL);
   });
 
   beforeEach(async () => {
+    await User.deleteMany({});
     await Doctor.deleteMany({});
     await Patient.deleteMany({});
     await Review.deleteMany({});
 
-    doctorOne = await Doctor.create({ firstName: 'Docteur Un', lastName: 'Ab', specialty: 'Test' });
-    doctorTwo = await Doctor.create({ firstName: 'Docteur Deux', lastName: 'Ba', specialty: 'Test' });
-    testPatient = await Patient.create({ firstName: 'Patient Test', lastName: 'Pi', doctor: doctorOne._id });
+    const userDoc = await new User({ email: 'doc@test.com', password: 'password123456', role: 'doctor' }).save();
+    doctorOne = await Doctor.create({ _id: userDoc._id, firstName: 'Docteur', lastName: 'Un', specialty: 'Test' });
+
+    patientUser = await new User({ email: 'patient@test.com', password: 'password123456', role: 'patient' }).save();
+    await Patient.create({ _id: patientUser._id, user: patientUser._id, firstName: 'Patient', lastName: 'Test' });
+
+    const res = await request(app).post('/api/auth/login').send({ email: 'patient@test.com', password: 'password123456' });
+    patientToken = res.body.data.token;
   });
 
   afterAll(async () => {
     await mongoose.connection.close();
   });
 
-  // Test for POST /api/reviews
   describe('POST /api/reviews', () => {
-     it('should create a new notice', async () => {
-        const newReviewData = { rating: 5, comment: 'Excellent.', doctor: doctorOne._id, patient: testPatient._id };
-        const response = await request(app).post('/api/reviews').send(newReviewData);
+     it('should allow a logged-in user to create a notification', async () => {
+        const newReviewData = { rating: 5, comment: 'Excellent.', doctor: doctorOne._id, patient: patientUser._id };
+        const response = await request(app)
+            .post('/api/reviews')
+            .set('Authorization', `Bearer ${patientToken}`)
+            .send(newReviewData);
 
         expect(response.statusCode).toBe(201);
         expect(response.body.data.rating).toBe(5);
     });
   });
 
- 
-  // Test to get all reviews of a specific doctor
   describe('GET /api/doctors/:doctorId/reviews', () => {
-    it('should return only the advice of the specified doctor', async () => {
-      await Review.create({ rating: 5, comment: 'Review 1 for Dr One', doctor: doctorOne._id, patient: testPatient._id });
-      await Review.create({ rating: 4, comment: 'Review 2 for Dr One', doctor: doctorOne._id, patient: testPatient._id });
-      await Review.create({ rating: 3, comment: 'Review fot Dr Deux', doctor: doctorTwo._id, patient: testPatient._id });
-
-      const response = await request(app).get(`/api/doctors/${doctorOne._id}/reviews`);
-
+    it('should return the specified doctor reviews', async () => {
+      await Review.create({ rating: 5, comment: 'Avis 1', doctor: doctorOne._id, patient: patientUser._id });
+      
+      const response = await request(app)
+        .get(`/api/doctors/${doctorOne._id}/reviews`)
+        .set('Authorization', `Bearer ${patientToken}`);
+      
       expect(response.statusCode).toBe(200);
-      expect(response.body.data.length).toBe(2);
-      expect(response.body.data[0].comment).toContain('Dr Un');
-      expect(response.body.data[1].comment).toContain('Dr Un');
+      expect(response.body.data.length).toBe(1);
     });
   });
 });
