@@ -2,8 +2,9 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const Doctor = require('../models/Doctor');
+const Patient = require('../models/Patient'); 
 
-// We generate a jwt token for the user
+// Generate a jwt token for the user
 const generrateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '30d',
