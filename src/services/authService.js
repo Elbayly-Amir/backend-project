@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-
+const Doctor = require('../models/Doctor');
 
 // We generate a jwt token for the user
 const generrateToken = (id) => {
@@ -12,8 +12,7 @@ const generrateToken = (id) => {
 
 // Register a new user
 const registerUser = async (userData) => {
-    const { email, password, role } = userData;
-    const userExists = await User.findOne({ email });
+    const { email, password, role, firstName, lastName, specialty } = userData;    const userExists = await User.findOne({ email });
     if (userExists) {
         throw new Error('User already exists');
     }
@@ -23,6 +22,27 @@ const registerUser = async (userData) => {
         password,
         role,
     });
+
+    if (user && role === 'doctor') {
+        await Doctor.create({
+            _id: user._id,
+            firstName,
+            lastName,
+            specialty,
+            email: user.email
+        });
+    }
+    if (user && role === 'patient') {
+       if (!firstName && !lastName) {
+            throw new Error('First name and last name are required for patient registration');
+        }
+        await Patient.create({
+            _id: user._id,
+            user: user._id,
+            firstName,
+            lastName,
+        });
+    }
 
     if (user) {
         const token = generrateToken(user._id);
