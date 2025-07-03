@@ -17,8 +17,9 @@ const createDoctor = async (req, res) => {
 };
 
 const getAllDoctors = async (req, res) => {
-    try {
-        const doctors = await doctorService.findAllDoctors();
+  try {
+        const doctors = await doctorService.findAllDoctors(req.query);
+        
         res.status(200).json({
             status: 'success',
             data: doctors
@@ -47,6 +48,11 @@ const getDoctorProfile = async (req, res) => {
 const updateDoctor = async (req, res) => {
     try {
         const doctorId = req.params.id;
+
+        if (!req.user._id.equals(doctorId)) {
+            return res.status(403).json({ message: 'You can only update your own profile' });
+        }
+
         const updateData = req.body;
         const updatedDoctor = await doctorService.updateDoctorProfile(doctorId, updateData);
         res.status(200).json({
@@ -65,11 +71,14 @@ const updateDoctor = async (req, res) => {
 const deleteDoctor = async (req, res) => {
     try {
         const doctorId = req.params.id;
-        const deletedDoctor = await doctorService.deleteDoctorProfile(doctorId);
-        res.status(204).json({
-            status: 'success',
-            data: deletedDoctor
-        });
+
+        if (!req.user._id.equals(doctorId)) {
+            return res.status(403).json({ message: 'You can only delete your own profile' });
+        }
+        
+        await doctorService.deleteDoctorProfile(doctorId);
+        res.status(204).send();
+
     } catch (error) {
         if (error.message === 'Doctor not found') {
             res.status(404).json({ message: error.message });

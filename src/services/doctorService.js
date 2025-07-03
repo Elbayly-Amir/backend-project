@@ -11,9 +11,21 @@ const createDoctorProfile  = async (doctorData) => {
         throw new Error(error.message);
     }
 };
-const findAllDoctors = async () => {
+
+// We had to modify the findAllDoctors function to accept filters for specialty and city
+const findAllDoctors = async (filters = {}) => {
+    const query = {};
+
+    if (filters.specialty) {
+        query.specialty = { $regex: filters.specialty, $options: 'i' };
+    }
+
+    if (filters.city) {
+        query['location.city'] = { $regex: filters.city, $options: 'i' };
+    }
+
     try {
-        const doctors = await Doctor.find({});
+        const doctors = await Doctor.find(query);
         return doctors;
     } catch (error) {
         throw new Error(error.message);
@@ -29,10 +41,11 @@ const getDoctorProfile = async (doctorId) => {
     throw new Error('Doctor not found');
   }
 
-  const patients = await Patient.find({ doctor: doctorId });
   const reviews = await Review.find({ doctor: doctorId })
     .populate('patient', 'firstName lastName');
 
+  const patientIds = [...new Set(reviews.map(review => review.patient._id))];
+  const patients = await Patient.find({ '_id': { $in: patientIds } });
   const fullProfile = doctor.toObject(); 
   fullProfile.patients = patients;
   fullProfile.reviews = reviews;
