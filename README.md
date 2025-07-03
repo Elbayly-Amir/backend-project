@@ -94,8 +94,8 @@ package.json            # Dependencies and scripts
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repository-url>
-   cd <your-repository-name>
+   git clone https://github.com/Elbayly-Amir/backend-project.git
+   cd backend-project/
    ```
 
 2. **Install dependencies**
